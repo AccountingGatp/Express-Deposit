@@ -5,9 +5,11 @@ QuickBooks-ready **sales-entry workbook** for Express Text's QuickBooks Online f
 
 Drop in the tab-delimited `.txt` download for a month and the app:
 
-1. Totals only the real, collected **`AUTH_CAPTURE`** sales.
-2. Excludes the rows where no money was collected — **EXPIRED** `$1.00`
-   card-verification auths, **AUTH_ONLY**, and **VOID** — and shows the breakdown.
+1. Counts a row as a sale only when **Response Code = `1` (Approved)** *and*
+   **Action Code = `AUTH_CAPTURE`**.
+2. Excludes everything else and shows the breakdown — declined/error rows
+   (Response Code ≠ 1), plus approved-but-uncaptured **EXPIRED** `$1.00`
+   card-verification auths, **AUTH_ONLY**, and **VOID** rows.
 3. Derives the reporting period, the entry date, and the memo date range from the
    actual capture transaction dates (including captures from the last evening of
    the prior month, after batch cut-off).
@@ -22,8 +24,9 @@ Matches Express Text's bookkeeping SOP exactly:
 - **`Sales Data`** — the export loaded as-is (all rows, all columns) with a
   formula-driven totals block below it:
   - `Total (all rows in file)` = `SUM` of the Total Amount column
-  - `Total Sales (AUTH_CAPTURE only)` = `SUMIF` where Action Code = `AUTH_CAPTURE`
-  - `Excluded (EXPIRED / AUTH_ONLY / VOID)` = the difference of the two
+  - `Total Sales (Response Code 1 + AUTH_CAPTURE)` =
+    `SUMIFS` where Response Code = `1` and Action Code = `AUTH_CAPTURE`
+  - `Excluded (not approved / not captured)` = the difference of the two
   - a plain-language cell comment explaining the exclusion
 - **`Entry`** — the QuickBooks sales-receipt view (Client `Authorize.net`,
   Deposit to `1080- Authorize Clearing`, Product/Service `PAYG`, Qty `1`). The

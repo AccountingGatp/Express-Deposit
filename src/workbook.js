@@ -47,6 +47,7 @@ export function buildWorkbook(parsed) {
   const { header, rows, columns, totals, memo, period, dates } = parsed;
   const amountCol = colLetter(columns.amountIdx);
   const actionCol = colLetter(columns.actionIdx);
+  const responseCol = colLetter(columns.responseIdx);
   const nCols = header.length;
 
   // ---------------------------------------------------------------- Sales Data
@@ -86,6 +87,7 @@ export function buildWorkbook(parsed) {
   const dataEnd = rows.length + 1;
   const range = `${amountCol}${dataStart}:${amountCol}${dataEnd}`;
   const actionRange = `${actionCol}${dataStart}:${actionCol}${dataEnd}`;
+  const responseRange = `${responseCol}${dataStart}:${responseCol}${dataEnd}`;
 
   // Totals block below the data
   const blockStart = dataEnd + 2;
@@ -112,13 +114,13 @@ export function buildWorkbook(parsed) {
   );
   const salesCell = writeTotal(
     totalSalesRow,
-    'Total Sales (AUTH_CAPTURE only)',
-    `SUMIF(${actionRange},"AUTH_CAPTURE",${range})`,
+    'Total Sales (Response Code 1 + AUTH_CAPTURE)',
+    `SUMIFS(${range},${responseRange},"1",${actionRange},"AUTH_CAPTURE")`,
     totals.totalSales
   );
   writeTotal(
     excludedRow,
-    'Excluded (EXPIRED / AUTH_ONLY / VOID)',
+    'Excluded (not approved / not captured)',
     `${amountCol}${totalAllRow}-${amountCol}${totalSalesRow}`,
     totals.totalExcluded
   );
@@ -128,9 +130,10 @@ export function buildWorkbook(parsed) {
     texts: [
       {
         text:
-          'Only AUTH_CAPTURE rows are money we actually collected. ' +
-          'EXPIRED $1.00 card-check auths, AUTH_ONLY, and VOID rows are left ' +
-          'out because no money was captured on them.',
+          'Sales counts only rows where Response Code = 1 (Approved) AND ' +
+          'Action Code = AUTH_CAPTURE (money actually collected). ' +
+          'Everything else is left out: declined/error rows (Response Code not 1), ' +
+          'plus approved EXPIRED $1.00 card-check auths, AUTH_ONLY, and VOID rows.',
       },
     ],
   };

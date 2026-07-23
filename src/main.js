@@ -18,9 +18,10 @@ app.innerHTML = `
     </header>
     <p class="sub">
       Upload the month's Authorize.net transaction download (tab-delimited
-      <code>.txt</code>). The app totals only the real, collected
-      <strong>AUTH_CAPTURE</strong> sales — excluding EXPIRED $1.00 card-check
-      auths, AUTH_ONLY, and VOID rows — and builds the
+      <code>.txt</code>). The app totals only approved, collected sales —
+      <strong>Response Code 1</strong> and <strong>AUTH_CAPTURE</strong> —
+      excluding declined rows and approved-but-uncaptured EXPIRED $1.00
+      card-check auths, AUTH_ONLY, and VOID rows. It builds the
       <em>Authorize_Sales_Entry</em> workbook with live formulas, the Entry
       sales-receipt, and the SaasAnt import sheet.
     </p>
@@ -95,8 +96,11 @@ async function handleFile(file) {
   try {
     const text = await file.text();
     const parsed = parseSales(text);
-    if (parsed.counts.capture === 0) {
-      showError('No AUTH_CAPTURE (collected sale) rows were found in this file.');
+    if (parsed.counts.sales === 0) {
+      showError(
+        'No approved sales were found — no rows with Response Code 1 and ' +
+          'Action Code AUTH_CAPTURE.'
+      );
       return;
     }
     current = { parsed, filename: workbookFilename(parsed) };
@@ -110,10 +114,10 @@ async function handleFile(file) {
 function renderResults({ parsed, filename }) {
   const t = parsed.totals;
   const c = parsed.counts;
-  const breakdownRows = Object.entries(parsed.excludedBreakdown)
-    .sort((a, b) => b[1] - a[1])
+  const breakdownRows = parsed.excludedBreakdown
     .map(
-      ([code, n]) => `<tr><td>${code}</td><td class="num">${int(n)}</td></tr>`
+      (g) =>
+        `<tr><td>${g.reason}</td><td class="num">${int(g.rows)}</td><td class="num">${money(g.amount)}</td></tr>`
     )
     .join('');
 
@@ -128,9 +132,9 @@ function renderResults({ parsed, filename }) {
   results.innerHTML = `
     <div class="grid">
       <div class="stat hi">
-        <div class="k">Total Sales · AUTH_CAPTURE</div>
+        <div class="k">Total Sales · Response 1 + AUTH_CAPTURE</div>
         <div class="v">$${money(t.totalSales)}</div>
-        <div class="note">Used in the QuickBooks entry</div>
+        <div class="note">${int(c.sales)} approved sales · used in the QuickBooks entry</div>
       </div>
       <div class="stat">
         <div class="k">Total · all rows</div>
@@ -140,7 +144,7 @@ function renderResults({ parsed, filename }) {
       <div class="stat">
         <div class="k">Excluded</div>
         <div class="v">$${money(t.totalExcluded)}</div>
-        <div class="note">${int(c.excluded)} rows not collected</div>
+        <div class="note">${int(c.excluded)} rows not approved / not captured</div>
       </div>
     </div>
 
@@ -167,14 +171,16 @@ function renderResults({ parsed, filename }) {
     <div class="card">
       <h3 class="section">Excluded rows — why they don't count</h3>
       <p class="sub" style="margin:0 0 12px">
-        Only AUTH_CAPTURE rows are money actually collected. The rows below are
-        left out because no money was captured on them.
+        Only rows with <strong>Response Code 1 (Approved)</strong> and
+        <strong>Action Code AUTH_CAPTURE</strong> are counted as sales. The rows
+        below are left out — either not approved, or approved but no money was
+        captured.
       </p>
       <table class="mini">
-        <thead><tr><th>Action Code</th><th class="num">Rows</th></tr></thead>
+        <thead><tr><th>Reason</th><th class="num">Rows</th><th class="num">Amount</th></tr></thead>
         <tbody>
           ${breakdownRows}
-          <tr><td><strong>Total excluded</strong></td><td class="num"><strong>${int(c.excluded)}</strong></td></tr>
+          <tr><td><strong>Total excluded</strong></td><td class="num"><strong>${int(c.excluded)}</strong></td><td class="num"><strong>${money(t.totalExcluded)}</strong></td></tr>
         </tbody>
       </table>
     </div>
