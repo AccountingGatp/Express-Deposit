@@ -39,7 +39,19 @@ Formatting throughout: Arial, navy `#1F3864` headers with white bold text,
 alternating `#D9E1F2` row fills, frozen header row, no gridlines, amounts
 `#,##0.00`, dates `mm/dd/yyyy`. All totals are live formulas.
 
-## Run locally
+## Offline tool (no server, no internet)
+
+`offline/Authorize_Sales_Entry_Tool.html` is a single self-contained file — all
+CSS, JavaScript, and the ExcelJS library are inlined. Save it anywhere and
+**double-click to open in any browser**; it runs completely offline (the export
+file never leaves your computer). Rebuild it after code changes with:
+
+```bash
+npm install
+npm run build:offline   # writes offline/Authorize_Sales_Entry_Tool.html
+```
+
+## Run locally (web version)
 
 ```bash
 npm install
